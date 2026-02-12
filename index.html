@@ -13,7 +13,6 @@
       height: 100%;
       background: #000;
       overflow: hidden;
-      -webkit-text-size-adjust: 100%;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
 
@@ -27,15 +26,13 @@
       height: 100vh;
       display: grid;
       place-items: center;
-      background: #000;
     }
 
     .frame {
       width: min(100vw, calc(100vh * 9 / 16));
       height: min(100vh, calc(100vw * 16 / 9));
-      background: #000;
-      overflow: hidden;
       position: relative;
+      overflow: hidden;
     }
 
     iframe {
@@ -43,7 +40,6 @@
       height: 100%;
       border: 0;
       background: #000;
-      display: block;
     }
 
     .loading {
@@ -51,11 +47,24 @@
       inset: 0;
       display: grid;
       place-items: center;
-      color: rgba(255,255,255,.85);
-      font-size: 14px;
-      pointer-events: none;
-      background: radial-gradient(circle at center, rgba(255,255,255,.06), rgba(0,0,0,.85));
+      color: #fff;
+      background: rgba(0,0,0,.85);
       z-index: 5;
+    }
+
+    /* TIMER */
+    .timer {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 6;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #fff;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.15);
+      display: none;
     }
 
     /* OVERLAY FINE SESSIONE */
@@ -71,13 +80,13 @@
     }
 
     .session-expired .box {
-      max-width: 320px;
+      max-width: 360px;
       margin: auto;
     }
 
     .session-expired h2 {
       font-size: 20px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .session-expired p {
@@ -87,16 +96,14 @@
     }
 
     .session-expired button {
-      background: #1e90ff;
-      border: 0;
-      color: #fff;
-      padding: 12px 20px;
+      padding: 12px 18px;
       font-size: 14px;
       border-radius: 6px;
+      border: 0;
       cursor: pointer;
+      background: #1e90ff;
+      color: #fff;
     }
-
-    ::-webkit-scrollbar { width: 0; height: 0; }
   </style>
 </head>
 
@@ -105,71 +112,78 @@
     <div class="frame">
       <div class="loading" id="loading">Caricamento…</div>
 
+      <div class="timer" id="timerBox">
+        Tempo rimasto: <strong id="timerText">03:00</strong>
+      </div>
+
       <iframe
         id="agentFrame"
-        title="D-ID Agent"
         allow="camera; microphone; autoplay; fullscreen"
-        referrerpolicy="no-referrer"
         src="https://studio.d-id.com/agents/share?id=v2_agt_gbmbROjG&utm_source=copy&key=WjI5dloyeGxMVzloZFhSb01ud3hNVGd5TXpZME9EUTNNVFl4T0RBMk5ETTBNams2U2tOSmVteHlOMkZzWW1oRlIxUTNXbXhPTVZSeQ=="
       ></iframe>
 
-      <!-- OVERLAY SCADENZA -->
       <div class="session-expired" id="sessionExpired">
         <div class="box">
           <h2>Sessione terminata</h2>
-          <p>La chat con l’assistente AI ha una durata massima di 5 minuti.</p>
-          <button onclick="restartSession()">Ricarica sessione</button>
+          <p>La chat con l’assistente AI ha una durata massima di 3 minuti.</p>
+          <button onclick="restartSession()">Avvia nuova sessione</button>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    const SESSION_DURATION = 5 * 60 * 1000; // 5 minuti
+    const SESSION_DURATION = 3 * 60 * 1000;
 
     const frame = document.getElementById('agentFrame');
     const loading = document.getElementById('loading');
     const expired = document.getElementById('sessionExpired');
+    const timerBox = document.getElementById('timerBox');
+    const timerText = document.getElementById('timerText');
+
+    let timeout = null;
+    let interval = null;
+    let endAt = null;
+
+    function format(ms) {
+      const s = Math.max(0, Math.ceil(ms / 1000));
+      return `${String(Math.floor(s / 60)).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`;
+    }
 
     frame.addEventListener('load', () => {
-      if (loading) loading.style.display = 'none';
-      startSessionTimer();
+      loading.style.display = 'none';
+      startSession();
     });
 
-    let sessionTimer;
+    function startSession() {
+      clearTimeout(timeout);
+      clearInterval(interval);
 
-    function startSessionTimer() {
-      clearTimeout(sessionTimer);
-      sessionTimer = setTimeout(endSession, SESSION_DURATION);
+      endAt = Date.now() + SESSION_DURATION;
+      timerBox.style.display = 'block';
+      timerText.textContent = format(SESSION_DURATION);
+
+      interval = setInterval(() => {
+        timerText.textContent = format(endAt - Date.now());
+      }, 250);
+
+      timeout = setTimeout(endSession, SESSION_DURATION);
     }
 
     function endSession() {
+      clearInterval(interval);
+      timerBox.style.display = 'none';
       frame.style.display = 'none';
       expired.style.display = 'grid';
+      frame.src = 'about:blank';
     }
 
     function restartSession() {
       expired.style.display = 'none';
       frame.style.display = 'block';
-      frame.src = frame.src; // forza nuova sessione
+      loading.style.display = 'grid';
+      frame.src = frame.src || location.reload();
     }
-
-    /* Tentativo fullscreen al primo tap */
-    function requestFs() {
-      const el = document.documentElement;
-      const fs = el.requestFullscreen || el.webkitRequestFullscreen;
-      if (fs) { try { fs.call(el); } catch(e) {} }
-    }
-    window.addEventListener('touchstart', requestFs, { once: true, passive: true });
-    window.addEventListener('click', requestFs, { once: true });
-
-    /* blocca doppio tap zoom */
-    let lastTouchEnd = 0;
-    document.addEventListener('touchend', (e) => {
-      const now = Date.now();
-      if (now - lastTouchEnd <= 300) e.preventDefault();
-      lastTouchEnd = now;
-    }, { passive: false });
   </script>
 </body>
 </html>
