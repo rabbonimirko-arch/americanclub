@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>AI Agent</title>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    body {
+      padding: env(safe-area-inset-top) env(safe-area-inset-right)
+               env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    .stage {
+      width: 100vw;
+      height: 100vh;
+      display: grid;
+      place-items: center;
+    }
+
+    .frame {
+      width: min(100vw, calc(100vh * 9 / 16));
+      height: min(100vh, calc(100vw * 16 / 9));
+      position: relative;
+      overflow: hidden;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #000;
+    }
+
+    .loading {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: rgba(0,0,0,.85);
+      z-index: 5;
+    }
+
+    /* TIMER */
+    .timer {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 6;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #fff;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.15);
+      display: none;
+    }
+
+    /* OVERLAY FINE SESSIONE */
+    .session-expired {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,.92);
+      color: #fff;
+      display: none;
+      z-index: 10;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .session-expired .box {
+      max-width: 360px;
+      margin: auto;
+    }
+
+    .session-expired h2 {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+
+    .session-expired p {
+      font-size: 14px;
+      opacity: .85;
+      margin-bottom: 20px;
+    }
+
+    .session-expired button {
+      padding: 12px 18px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 0;
+      cursor: pointer;
+      background: #1e90ff;
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="stage">
+    <div class="frame">
+      <div class="loading" id="loading">Caricamento…</div>
+
+      <div class="timer" id="timerBox">
+        Tempo rimasto: <strong id="timerText">03:00</strong>
+      </div>
+
+      <iframe
+        id="agentFrame"
+        allow="camera; microphone; autoplay; fullscreen"
+        src="https://studio.d-id.com/agents/share?id=v2_agt_gbmbROjG&utm_source=copy&key=WjI5dloyeGxMVzloZFhSb01ud3hNVGd5TXpZME9EUTNNVFl4T0RBMk5ETTBNams2U2tOSmVteHlOMkZzWW1oRlIxUTNXbXhPTVZSeQ=="
+      ></iframe>
+
+      <div class="session-expired" id="sessionExpired">
+        <div class="box">
+          <h2>Sessione terminata</h2>
+          <p>La chat con l’assistente AI ha una durata massima di 3 minuti.</p>
+          <button onclick="restartSession()">Avvia nuova sessione</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SESSION_DURATION = 3 * 60 * 1000;
+
+    const frame = document.getElementById('agentFrame');
+    const loading = document.getElementById('loading');
+    const expired = document.getElementById('sessionExpired');
+    const timerBox = document.getElementById('timerBox');
+    const timerText = document.getElementById('timerText');
+
+    let timeout = null;
+    let interval = null;
+    let endAt = null;
+
+    function format(ms) {
+      const s = Math.max(0, Math.ceil(ms / 1000));
+      return `${String(Math.floor(s / 60)).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`;
+    }
+
+    frame.addEventListener('load', () => {
+      loading.style.display = 'none';
+      startSession();
+    });
+
+    function startSession() {
+      clearTimeout(timeout);
+      clearInterval(interval);
+
+      endAt = Date.now() + SESSION_DURATION;
+      timerBox.style.display = 'block';
+      timerText.textContent = format(SESSION_DURATION);
+
+      interval = setInterval(() => {
+        timerText.textContent = format(endAt - Date.now());
+      }, 250);
+
+      timeout = setTimeout(endSession, SESSION_DURATION);
+    }
+
+    function endSession() {
+      clearInterval(interval);
+      timerBox.style.display = 'none';
+      frame.style.display = 'none';
+      expired.style.display = 'grid';
+      frame.src = 'about:blank';
+    }
+
+    function restartSession() {
+      expired.style.display = 'none';
+      frame.style.display = 'block';
+      loading.style.display = 'grid';
+      frame.src = frame.src || location.reload();
+    }
+  </script>
+</body>
+</html>
